@@ -12,8 +12,6 @@ local FOV_RADIUS = 160
 local lastShotTime = 0
 local shotCooldown = 0.05
 
-local credits = "Created by Soup348 and Rock"
-
 local CONFIG = {
     crosshair = {
         size = 10,
@@ -24,7 +22,8 @@ local CONFIG = {
         fillTransparency = 0.5,
         outlineColor = Color3.fromRGB(255, 255, 255),
         specialPlayers = {
-            ["trickyZOMBIE_clown2"] = Color3.fromRGB(300, 100, 0)
+            ["trickyZOMBIE_clown2"] = Color3.fromRGB(300, 100, 0),
+            ["Yoyo666687"] = Color3.fromRGB(300, 100, 0)
         }
     },
     sounds = {
@@ -68,21 +67,6 @@ circle.Filled = false
 circle.Transparency = 1
 circle.Color = Color3.fromRGB(255, 255, 255)
 circle.Visible = true
-
-local creditsGui = Instance.new("ScreenGui")
-creditsGui.Name = "CreditsGui"
-creditsGui.Parent = game.CoreGui
-
-local creditsLabel = Instance.new("TextLabel")
-creditsLabel.Size = UDim2.new(0, 200, 0, 30)
-creditsLabel.Position = UDim2.new(0, 10, 0, 10)
-creditsLabel.BackgroundTransparency = 0.7
-creditsLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-creditsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-creditsLabel.TextSize = 14
-creditsLabel.Font = Enum.Font.SourceSansBold
-creditsLabel.Text = credits
-creditsLabel.Parent = creditsGui
 
 local function playGunshotSound()
     local sound = Instance.new("Sound")
@@ -340,10 +324,6 @@ local function cleanup()
         soundFolder:Destroy()
     end
     
-    if creditsGui then
-        creditsGui:Destroy()
-    end
-    
     highlights = {}
 end
 
@@ -373,4 +353,30 @@ local function startAimbotESP()
         
         if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
             local currentTime = tick()
-            if currentTime - lastShotTime >= shotC
+            if currentTime - lastShotTime >= shotCooldown then
+                playGunshotSound()
+                lastShotTime = currentTime
+            end
+        end
+        
+        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+            local target = getClosestPlayerInFOV()
+            if target and target.Character then
+                local head = target.Character:FindFirstChild("Head")
+                if head then
+                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+                end
+            end
+        end
+    end)
+    
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == CONFIG.keybinds.toggle then
+            cleanup()
+        elseif input.KeyCode == CONFIG.keybinds.changeGunshotSound then
+            changeGunshotSound()
+        end
+    end)
+end
+
+startAimbotESP()
