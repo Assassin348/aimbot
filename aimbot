@@ -3,7 +3,6 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
-
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local highlights = {}
@@ -11,7 +10,6 @@ local isRunning = true
 local FOV_RADIUS = 160
 local lastShotTime = 0
 local shotCooldown = 0.05
-
 local CONFIG = {
     crosshair = {
         size = 10,
@@ -112,6 +110,17 @@ local function isWithinCircle(position)
     return distance <= FOV_RADIUS
 end
 
+-- Function to check if two players are on the same team
+local function isSameTeam(player1, player2)
+    -- If either player doesn't have a team, they're not on the same team
+    if not player1.Team or not player2.Team then
+        return false
+    end
+    
+    -- Check if they're on the same team
+    return player1.Team == player2.Team
+end
+
 local function createESP(player)
     if player == LocalPlayer then return end
     
@@ -171,7 +180,7 @@ local function getClosestPlayerInFOV()
     local maxDistance = math.huge
     
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
+        if player ~= LocalPlayer and not isSameTeam(player, LocalPlayer) then
             if player.Character
                 and player.Character:FindFirstChild("HumanoidRootPart")
                 and player.Character:FindFirstChild("Humanoid")
@@ -364,7 +373,7 @@ local function startAimbotESP()
             if target and target.Character then
                 local head = target.Character:FindFirstChild("Head")
                 if head then
-                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+                     Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
                 end
             end
         end
