@@ -32,7 +32,7 @@ local CONFIG = {
             volume = 1
         },
         gunshot = {
-            id = "rbxassetid://91669069631510",
+            id = "rbxassetid://9128903095",
             volume = 0.8
         }
     },
