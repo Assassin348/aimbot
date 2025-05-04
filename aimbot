@@ -27,7 +27,7 @@ local CONFIG = {
     sounds = {
         kill = {
             id = "rbxassetid://91669069631510",
-            volume = 10
+            volume = 100
         },
         gunshot = {
             id = "rbxassetid://491270608",
