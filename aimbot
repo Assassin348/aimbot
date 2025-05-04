@@ -31,7 +31,7 @@ local CONFIG = {
         },
         gunshot = {
             id = "rbxassetid://491270608",
-            volume = 100
+            volume = 0.8
         }
     },
     keybinds = {
