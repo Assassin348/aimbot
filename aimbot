@@ -39,12 +39,12 @@ local CONFIG = {
     },
     sounds = {
         kill = {
-            id = "rbxassetid://17748195478",
+            id = "rbxassetid://126952108577695",
             volume = 1
         },
         gunshot = {
             id = "rbxassetid://491270608",
-            volume = 0.8
+            volume = 0.3
         }
     },
     keybinds = {
