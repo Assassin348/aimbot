@@ -10,6 +10,13 @@ local isRunning = true
 local FOV_RADIUS = 160
 local lastShotTime = 0
 local shotCooldown = 0.05
+
+-- ESP flickering variables
+local espFlickerRate = 10000 -- times per second
+local espFlickerInterval = 1 / espFlickerRate -- 0.001 seconds
+local lastESPToggle = 0
+local espVisible = true
+
 local CONFIG = {
     crosshair = {
         size = 10,
@@ -108,6 +115,21 @@ local function isWithinCircle(position)
     local circleCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - circleCenter).Magnitude
     return distance <= FOV_RADIUS
+end
+
+-- Function to toggle ESP visibility for all highlights
+local function toggleESPVisibility(visible)
+    for _, highlight in pairs(highlights) do
+        if highlight and highlight.Parent then
+            if visible then
+                highlight.FillTransparency = CONFIG.esp.fillTransparency
+                highlight.OutlineTransparency = 0
+            else
+                highlight.FillTransparency = 1
+                highlight.OutlineTransparency = 1
+            end
+        end
+    end
 end
 
 -- Function to check if two players are on the same team
@@ -356,9 +378,16 @@ local function startAimbotESP()
     
     RunService.RenderStepped:Connect(function()
         if not isRunning then return end
-        
         updateCircle()
         updateCrosshair()
+        
+        -- ESP flickering logic at 1000 times per second
+        local currentTime = tick()
+        if currentTime - lastESPToggle >= espFlickerInterval then
+            espVisible = not espVisible
+            toggleESPVisibility(espVisible)
+            lastESPToggle = currentTime
+        end
         
         if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
             local currentTime = tick()
@@ -372,8 +401,8 @@ local function startAimbotESP()
             local target = getClosestPlayerInFOV()
             if target and target.Character then
                 local head = target.Character:FindFirstChild("Head")
-                if head then
-                     Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+                if head then 
+                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
                 end
             end
         end
