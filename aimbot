@@ -6,17 +6,14 @@ local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local highlights = {}
+local espBoxes = {}
+local espNames = {}
+local espHealthBars = {}
+local espDistances = {}
 local isRunning = true
 local FOV_RADIUS = 160
 local lastShotTime = 0
 local shotCooldown = 0.05
-
--- ESP flickering variables
-local espFlickerRate = 1000 -- times per second
-local espFlickerInterval = 1 / espFlickerRate -- 0.001 seconds
-local lastESPToggle = 0
-local espVisible = true
-
 local CONFIG = {
     crosshair = {
         size = 10,
@@ -24,8 +21,17 @@ local CONFIG = {
         color = Color3.fromRGB(255, 255, 255)
     },
     esp = {
+        enabled = true,
+        boxes = true,
+        names = true,
+        healthBars = true,
+        distances = true,
+        teamColors = true,
         fillTransparency = 0.5,
         outlineColor = Color3.fromRGB(255, 255, 255),
+        textSize = 14,
+        textFont = Drawing.Fonts.UI,
+        maxDistance = 1000,
         specialPlayers = {
             ["trickyZOMBIE_clown2"] = Color3.fromRGB(300, 100, 0),
             ["Yoyo666687"] = Color3.fromRGB(300, 100, 0)
@@ -33,17 +39,18 @@ local CONFIG = {
     },
     sounds = {
         kill = {
-            id = "rbxassetid://126952108577695",
-            volume = 100
+            id = "rbxassetid://17748195478",
+            volume = 1
         },
         gunshot = {
-            id = "rbxassetid://",
+            id = "rbxassetid://491270608",
             volume = 0.8
         }
     },
     keybinds = {
         toggle = Enum.KeyCode.F4,
-        changeGunshotSound = Enum.KeyCode.F5
+        changeGunshotSound = Enum.KeyCode.F5,
+        toggleESP = Enum.KeyCode.F6
     }
 }
 
@@ -59,10 +66,12 @@ killSound.Parent = soundFolder
 local crosshairVertical = Drawing.new("Line")
 crosshairVertical.Thickness = CONFIG.crosshair.thickness
 crosshairVertical.Color = CONFIG.crosshair.color
+crosshairVertical.Visible = true
 
 local crosshairHorizontal = Drawing.new("Line")
 crosshairHorizontal.Thickness = CONFIG.crosshair.thickness
 crosshairHorizontal.Color = CONFIG.crosshair.color
+crosshairHorizontal.Visible = true
 
 local circle = Drawing.new("Circle")
 circle.Thickness = 2
@@ -117,21 +126,6 @@ local function isWithinCircle(position)
     return distance <= FOV_RADIUS
 end
 
--- Function to toggle ESP visibility for all highlights
-local function toggleESPVisibility(visible)
-    for _, highlight in pairs(highlights) do
-        if highlight and highlight.Parent then
-            if visible then
-                highlight.FillTransparency = CONFIG.esp.fillTransparency
-                highlight.OutlineTransparency = 0
-            else
-                highlight.FillTransparency = 1
-                highlight.OutlineTransparency = 1
-            end
-        end
-    end
-end
-
 -- Function to check if two players are on the same team
 local function isSameTeam(player1, player2)
     -- If either player doesn't have a team, they're not on the same team
@@ -143,38 +137,183 @@ local function isSameTeam(player1, player2)
     return player1.Team == player2.Team
 end
 
+local function getPlayerColor(player)
+    if CONFIG.esp.specialPlayers[player.Name] then
+        return CONFIG.esp.specialPlayers[player.Name]
+    elseif CONFIG.esp.teamColors and player.Team then
+        return player.Team.TeamColor.Color
+    else
+        return getRainbowColor(1)
+    end
+end
+
 local function createESP(player)
     if player == LocalPlayer then return end
     
+    -- Highlight for character
     local highlight = Instance.new("Highlight")
     highlight.FillTransparency = CONFIG.esp.fillTransparency
     highlight.OutlineColor = CONFIG.esp.outlineColor
     
+    -- ESP Box
+    local espBox = Drawing.new("Square")
+    espBox.Thickness = 1
+    espBox.Filled = false
+    espBox.Visible = CONFIG.esp.boxes and CONFIG.esp.enabled
+    
+    -- ESP Name
+    local espName = Drawing.new("Text")
+    espName.Size = CONFIG.esp.textSize
+    espName.Center = true
+    espName.Outline = true
+    espName.Font = CONFIG.esp.textFont
+    espName.Visible = CONFIG.esp.names and CONFIG.esp.enabled
+    
+    -- ESP Health Bar Background
+    local espHealthBarBg = Drawing.new("Square")
+    espHealthBarBg.Thickness = 1
+    espHealthBarBg.Filled = true
+    espHealthBarBg.Color = Color3.fromRGB(0, 0, 0)
+    espHealthBarBg.Transparency = 0.5
+    espHealthBarBg.Visible = CONFIG.esp.healthBars and CONFIG.esp.enabled
+    
+    -- ESP Health Bar
+    local espHealthBar = Drawing.new("Square")
+    espHealthBar.Thickness = 1
+    espHealthBar.Filled = true
+    espHealthBar.Visible = CONFIG.esp.healthBars and CONFIG.esp.enabled
+    
+    -- ESP Distance
+    local espDistance = Drawing.new("Text")
+    espDistance.Size = CONFIG.esp.textSize - 2
+    espDistance.Center = true
+    espDistance.Outline = true
+    espDistance.Font = CONFIG.esp.textFont
+    espDistance.Visible = CONFIG.esp.distances and CONFIG.esp.enabled
+    
     local function updateESP()
-        if player.Character then
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
             highlight.Parent = player.Character
-            local humanoid = player.Character:WaitForChild("Humanoid")
             
-            if CONFIG.esp.specialPlayers[player.Name] then
-                highlight.FillColor = CONFIG.esp.specialPlayers[player.Name]
-            else
-                RunService.RenderStepped:Connect(function()
-                    if highlight and highlight.Parent then
-                        highlight.FillColor = getRainbowColor(1)
-                    end
+            local playerColor = getPlayerColor(player)
+            highlight.FillColor = playerColor
+            espBox.Color = playerColor
+            espName.Color = playerColor
+            espHealthBar.Color = Color3.fromRGB(0, 255, 0) -- Health bar is always green
+            espDistance.Color = Color3.fromRGB(255, 255, 255) -- Distance is always white
+            
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.Died:Connect(function()
+                    highlight.FillColor = Color3.fromRGB(128, 128, 128)
+                    espBox.Visible = false
+                    espName.Visible = false
+                    espHealthBarBg.Visible = false
+                    espHealthBar.Visible = false
+                    espDistance.Visible = false
                 end)
             end
-            
-            humanoid.Died:Connect(function()
-                highlight.FillColor = Color3.fromRGB(128, 128, 128)
-                highlight.Parent = player.Character
-            end)
         end
     end
     
     updateESP()
     player.CharacterAdded:Connect(updateESP)
+    
+    espBoxes[player] = {
+        box = espBox,
+        healthBarBg = espHealthBarBg,
+        healthBar = espHealthBar,
+        name = espName,
+        distance = espDistance
+    }
+    
     return highlight
+end
+
+local function updateESPElements()
+    for player, elements in pairs(espBoxes) do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid.Health <= 0 then
+                elements.box.Visible = false
+                elements.name.Visible = false
+                elements.healthBarBg.Visible = false
+                elements.healthBar.Visible = false
+                elements.distance.Visible = false
+                continue
+            end
+            
+            local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+            if distance > CONFIG.esp.maxDistance then
+                elements.box.Visible = false
+                elements.name.Visible = false
+                elements.healthBarBg.Visible = false
+                elements.healthBar.Visible = false
+                elements.distance.Visible = false
+                continue
+            end
+            
+            local rootPos = hrp.Position
+            local rootSize = hrp.Size
+            local head = player.Character:FindFirstChild("Head")
+            
+            local screenPos, onScreen = Camera:WorldToViewportPoint(rootPos)
+            
+            if not onScreen then
+                elements.box.Visible = false
+                elements.name.Visible = false
+                elements.healthBarBg.Visible = false
+                elements.healthBar.Visible = false
+                elements.distance.Visible = false
+                continue
+            end
+            
+            -- Calculate box dimensions
+            local sizeMultiplier = 1 / (distance * 0.05)
+            sizeMultiplier = math.clamp(sizeMultiplier, 0.1, 1)
+            
+            local boxSize = Vector2.new(40, 60) * sizeMultiplier
+            local boxPosition = Vector2.new(screenPos.X - boxSize.X / 2, screenPos.Y - boxSize.Y / 2)
+            
+            -- Update box
+            elements.box.Size = boxSize
+            elements.box.Position = boxPosition
+            elements.box.Visible = CONFIG.esp.boxes and CONFIG.esp.enabled
+            
+            -- Update name
+            elements.name.Text = player.Name
+            elements.name.Position = Vector2.new(screenPos.X, boxPosition.Y - 15)
+            elements.name.Visible = CONFIG.esp.names and CONFIG.esp.enabled
+            
+            -- Update health bar
+            local healthBarWidth = 5
+            local healthBarHeight = boxSize.Y
+            local healthBarPosition = Vector2.new(boxPosition.X - healthBarWidth - 2, boxPosition.Y)
+            
+            elements.healthBarBg.Size = Vector2.new(healthBarWidth, healthBarHeight)
+            elements.healthBarBg.Position = healthBarPosition
+            elements.healthBarBg.Visible = CONFIG.esp.healthBars and CONFIG.esp.enabled
+            
+            local healthPercentage = humanoid.Health / humanoid.MaxHealth
+            elements.healthBar.Size = Vector2.new(healthBarWidth, healthBarHeight * healthPercentage)
+            elements.healthBar.Position = Vector2.new(healthBarPosition.X, healthBarPosition.Y + healthBarHeight * (1 - healthPercentage))
+            elements.healthBar.Color = Color3.fromRGB(255 * (1 - healthPercentage), 255 * healthPercentage, 0)
+            elements.healthBar.Visible = CONFIG.esp.healthBars and CONFIG.esp.enabled
+            
+            -- Update distance
+            elements.distance.Text = math.floor(distance) .. "m"
+            elements.distance.Position = Vector2.new(screenPos.X, boxPosition.Y + boxSize.Y + 5)
+            elements.distance.Visible = CONFIG.esp.distances and CONFIG.esp.enabled
+        else
+            elements.box.Visible = false
+            elements.name.Visible = false
+            elements.healthBarBg.Visible = false
+            elements.healthBar.Visible = false
+            elements.distance.Visible = false
+        end
+    end
 end
 
 local function setupKillDetection(player)
@@ -339,6 +478,19 @@ local function changeGunshotSound()
     end)
 end
 
+local function toggleESPFeature()
+    CONFIG.esp.enabled = not CONFIG.esp.enabled
+    
+    -- Update visibility of all ESP elements
+    for player, elements in pairs(espBoxes) do
+        elements.box.Visible = CONFIG.esp.boxes and CONFIG.esp.enabled
+        elements.name.Visible = CONFIG.esp.names and CONFIG.esp.enabled
+        elements.healthBarBg.Visible = CONFIG.esp.healthBars and CONFIG.esp.enabled
+        elements.healthBar.Visible = CONFIG.esp.healthBars and CONFIG.esp.enabled
+        elements.distance.Visible = CONFIG.esp.distances and CONFIG.esp.enabled
+    end
+end
+
 local function cleanup()
     isRunning = false
     circle:Remove()
@@ -351,11 +503,20 @@ local function cleanup()
         end
     end
     
+    for _, elements in pairs(espBoxes) do
+        elements.box:Remove()
+        elements.name:Remove()
+        elements.healthBarBg:Remove()
+        elements.healthBar:Remove()
+        elements.distance:Remove()
+    end
+    
     if soundFolder then
         soundFolder:Destroy()
     end
     
     highlights = {}
+    espBoxes = {}
 end
 
 local function startAimbotESP()
@@ -374,20 +535,23 @@ local function startAimbotESP()
             highlights[player]:Destroy()
             highlights[player] = nil
         end
+        
+        if espBoxes[player] then
+            espBoxes[player].box:Remove()
+            espBoxes[player].name:Remove()
+            espBoxes[player].healthBarBg:Remove()
+            espBoxes[player].healthBar:Remove()
+            espBoxes[player].distance:Remove()
+            espBoxes[player] = nil
+        end
     end)
     
     RunService.RenderStepped:Connect(function()
         if not isRunning then return end
+        
         updateCircle()
         updateCrosshair()
-        
-        -- ESP flickering logic at 1000 times per second
-        local currentTime = tick()
-        if currentTime - lastESPToggle >= espFlickerInterval then
-            espVisible = not espVisible
-            toggleESPVisibility(espVisible)
-            lastESPToggle = currentTime
-        end
+        updateESPElements()
         
         if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
             local currentTime = tick()
@@ -401,7 +565,7 @@ local function startAimbotESP()
             local target = getClosestPlayerInFOV()
             if target and target.Character then
                 local head = target.Character:FindFirstChild("Head")
-                if head then 
+                if head then
                     Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
                 end
             end
@@ -413,7 +577,50 @@ local function startAimbotESP()
             cleanup()
         elseif input.KeyCode == CONFIG.keybinds.changeGunshotSound then
             changeGunshotSound()
+        elseif input.KeyCode == CONFIG.keybinds.toggleESP then
+            toggleESPFeature()
         end
+    end)
+    
+    -- Create a notification to show controls
+    local notification = Instance.new("ScreenGui")
+    notification.Name = "AimbotESPNotification"
+    notification.Parent = game.CoreGui
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 250, 0, 150)
+    frame.Position = UDim2.new(0, 10, 0, 10)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    frame.Parent = notification
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 25)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    title.BackgroundTransparency = 0.3
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 16
+    title.Font = Enum.Font.SourceSansBold
+    title.Text = "Aimbot & ESP Controls"
+    title.Parent = frame
+    
+    local controls = Instance.new("TextLabel")
+    controls.Size = UDim2.new(0.95, 0, 0.8, 0)
+    controls.Position = UDim2.new(0.025, 0, 0.2, 0)
+    controls.BackgroundTransparency = 1
+    controls.TextColor3 = Color3.fromRGB(255, 255, 255)
+    controls.TextSize = 14
+    controls.Font = Enum.Font.SourceSans
+    controls.Text = "Right Mouse Button - Aim\nF4 - Toggle Script\nF5 - Change Gunshot Sound\nF6 - Toggle ESP"
+    controls.TextXAlignment = Enum.TextXAlignment.Left
+    controls.TextYAlignment = Enum.TextYAlignment.Top
+    controls.Parent = frame
+    
+    -- Auto-hide notification after 5 seconds
+    task.delay(5, function()
+        notification:Destroy()
     end)
 end
 
