@@ -12,7 +12,7 @@ local lastShotTime = 0
 local shotCooldown = 0.05
 
 -- ESP flickering variables
-local espFlickerRate = 10000 -- times per second
+local espFlickerRate = 1000 -- times per second
 local espFlickerInterval = 1 / espFlickerRate -- 0.001 seconds
 local lastESPToggle = 0
 local espVisible = true
