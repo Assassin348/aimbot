@@ -33,7 +33,7 @@ local CONFIG = {
         textFont = Drawing.Fonts.UI,
         maxDistance = 1000,
         specialPlayers = {
-            ["trickyZOMBIE_clown2"] = Color3.fromRGB(300, 100, 0),
+            ["soapboiz_1"] = Color3.fromRGB(300, 100, 0),
             ["Yoyo666687"] = Color3.fromRGB(300, 100, 0)
         }
     },
