@@ -34,8 +34,7 @@ local CONFIG = {
         maxDistance = 1000,
         specialPlayers = {
             ["soapboiz_1"] = Color3.fromRGB(300, 100, 0),
-            ["tomisnotspedpart2"] = Color3.fromRGB(300, 100, 0)
-            ["trickyZOMBIE_clown2"] = Color3.fromRGB(300, 100, 0),
+            ["trickyZOMBIE_clown2"] = Color3.fromRGB(300, 100, 0)
         }
     },
     sounds = {
