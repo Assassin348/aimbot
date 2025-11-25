@@ -564,7 +564,7 @@ local function startAimbotESP()
         if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
             local target = getClosestPlayerInFOV()
             if target and target.Character then
-                local head = target.Character:FindFirstChild("balls")
+                local head = target.Character:FindFirstChild("Head")
                 if head then
                     Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
                 end
