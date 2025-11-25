@@ -347,7 +347,7 @@ local function getClosestPlayerInFOV()
                 and player.Character:FindFirstChild("Humanoid")
                 and player.Character.Humanoid.Health > 0 then
                 
-                local head = player.Character:FindFirstChild("uppertorso")
+                local head = player.Character:FindFirstChild("Torso")
                 if head and isWithinCircle(head.Position) then
                     local distance = (Camera.CFrame.Position - head.Position).Magnitude
                     if distance < maxDistance then
